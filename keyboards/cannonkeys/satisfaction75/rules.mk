@@ -24,6 +24,7 @@ NKRO_ENABLE = yes           # Enable N-Key Rollover
 ENCODER_ENABLE = yes
 OLED_ENABLE = yes
 OLED_DRIVER = SSD1306
+WPM_ENABLE = yes
 #BACKLIGHT_ENABLE = yes
 
 DEFAULT_FOLDER = cannonkeys/satisfaction75/rev1
