@@ -2,6 +2,8 @@
 
 void draw_default(void);
 void draw_clock(void);
+void draw_bongo(void);
+char wpm_str[10];
 
 #ifdef OLED_ENABLE
 
@@ -20,13 +22,10 @@ bool oled_task_kb(void) {
     switch (oled_mode) {
         default:
         case OLED_DEFAULT:
-            draw_default();
+            draw_bongo();
             break;
         case OLED_TIME:
             draw_clock();
-            break;
-        case OLED_BONGO:
-            draw_bongo();
             break;
     }
     return false;
@@ -276,17 +275,19 @@ void draw_clock() {
 // #define PREP_FRAMES 1 // uncomment if >1
 
 #    define TAP_FRAMES 2
-#    define TAP_SPEED 40  // above this wpm value typing animation to trigger
+#    define TAP_SPEED 30  // above this wpm value typing animation to trigger
 
-#    define ANIM_FRAME_DURATION 200  // how long each frame lasts in ms
+#    define ANIM_FRAME_DURATION 60  // how long each frame lasts in ms
 // #define SLEEP_TIMER 60000 // should sleep after this period of 0 wpm, needs fixing
 #    define ANIM_SIZE 636  // number of bytes in array, minimize for adequate firmware size, max is 1024
 
 uint32_t anim_timer         = 0;
 uint32_t anim_sleep         = 0;
 uint8_t  current_idle_frame = 0;
+uint8_t  current_third_idle_frame = 0;
 // uint8_t current_prep_frame = 0; // uncomment if PREP_FRAMES >1
 uint8_t current_tap_frame = 0;
+uint8_t current_third_tap_frame = 0;
 
 // Code containing pixel art, contains:
 // 5 idle frames, 1 prep frame, and 2 tap frames
@@ -335,7 +336,12 @@ static void render_bongo(void) {
     // assumes 1 frame prep stage
     void animation_phase(void) {
         if (get_current_wpm() <= IDLE_SPEED) {
-            current_idle_frame = (current_idle_frame + 1) % IDLE_FRAMES;
+            current_third_idle_frame = (current_third_idle_frame + 1);
+            if (current_third_idle_frame >= 3) {
+                current_third_idle_frame = 0;
+                current_idle_frame = (current_idle_frame + 1) % IDLE_FRAMES;
+            }
+
             oled_write_raw_P(idle[abs((IDLE_FRAMES - 1) - current_idle_frame)], ANIM_SIZE);
         }
         if (get_current_wpm() > IDLE_SPEED && get_current_wpm() < TAP_SPEED) {
@@ -343,27 +349,41 @@ static void render_bongo(void) {
             oled_write_raw_P(prep[0], ANIM_SIZE);  // remove if IDLE_FRAMES >1
         }
         if (get_current_wpm() >= TAP_SPEED) {
-            current_tap_frame = (current_tap_frame + 1) % TAP_FRAMES;
+            current_third_tap_frame = (current_third_tap_frame + 1);
+            if (current_third_tap_frame >= 3) {
+                current_third_tap_frame = 0;
+                current_tap_frame = (current_tap_frame + 1) % TAP_FRAMES;
+            }
+
             oled_write_raw_P(tap[abs((TAP_FRAMES - 1) - current_tap_frame)], ANIM_SIZE);
         }
     }
-    if (get_current_wpm() != 000) {
-        oled_on();  // not essential but turns on animation OLED with any alpha keypress
+
+    if (timer_elapsed32(anim_timer) > ANIM_FRAME_DURATION) {
+            anim_timer = timer_read32();
+            animation_phase();
+    }
+
+/*     if (get_current_wpm() != 000) {
+        // oled_on();  // not essential but turns on animation OLED with any alpha keypress
         if (timer_elapsed32(anim_timer) > ANIM_FRAME_DURATION) {
             anim_timer = timer_read32();
             animation_phase();
         }
         anim_sleep = timer_read32();
+
     } else {
         if (timer_elapsed32(anim_sleep) > OLED_TIMEOUT) {
-            oled_off();
+
         } else {
             if (timer_elapsed32(anim_timer) > ANIM_FRAME_DURATION) {
                 anim_timer = timer_read32();
                 animation_phase();
             }
         }
-    }
+
+    } */
+
 }
 
 void draw_bongo(void) {

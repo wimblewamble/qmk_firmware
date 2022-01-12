@@ -60,7 +60,6 @@ enum oled_modes {
   OLED_DEFAULT,
   OLED_TIME,
   OLED_OFF,
-  OLED_BONGO,
   _NUM_OLED_MODES
 };
 
